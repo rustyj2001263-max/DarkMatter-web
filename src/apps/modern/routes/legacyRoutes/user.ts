@@ -2,6 +2,13 @@ import { LegacyRoute } from '../../../../components/router/LegacyRoute';
 
 export const LEGACY_USER_ROUTES: LegacyRoute[] = [
     {
+        // Dark Matter Media: use the custom home page (shared with the legacy layout) instead of the modern one
+        path: 'home',
+        pageProps: {
+            controller: 'home',
+            view: 'home.html'
+        }
+    }, {
         path: 'details',
         pageProps: {
             controller: 'itemDetails/index',
