@@ -689,7 +689,7 @@ let navDrawerInstance;
 let mainDrawerButton;
 let headerHomeButton;
 let currentDrawerType;
-let documentTitle = 'Jellyfin';
+let documentTitle = 'Dark Matter Media';
 let pageTitleElement;
 let headerBackButton;
 let headerUserButton;
