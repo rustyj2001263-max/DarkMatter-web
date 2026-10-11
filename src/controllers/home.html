@@ -1,9 +1,35 @@
-<div id="indexPage" style="outline: none;" data-role="page" data-dom-cache="true" class="page homePage libraryPage allLibraryPage backdropPage pageWithAbsoluteTabs withTabs" data-backdroptype="movie,series,book">
+<div id="indexPage" style="outline: none;" data-role="page" data-dom-cache="true" class="page homePage libraryPage allLibraryPage noSecondaryNavPage dmmHomePage">
 
-    <div class="tabContent pageTabContent" id="homeTab" data-index="0">
-        <div class="sections"></div>
-    </div>
-    <div class="tabContent pageTabContent" id="favoritesTab" data-index="1">
-        <div class="sections"></div>
+    <section class="dmmBillboard hide">
+        <div class="dmmBillboard-backdrop"></div>
+        <div class="dmmBillboard-shade"></div>
+        <div class="dmmBillboard-content">
+            <div class="dmmBillboard-logo hide"></div>
+            <h1 class="dmmBillboard-title"></h1>
+            <div class="dmmBillboard-meta"></div>
+            <p class="dmmBillboard-overview"></p>
+            <div class="dmmBillboard-actions focuscontainer-x">
+                <button is="emby-button" type="button" class="dmmBillboard-button dmmBillboard-play">
+                    <span class="material-icons play_arrow" aria-hidden="true"></span>
+                    <span class="dmmBillboard-playText"></span>
+                </button>
+                <button is="emby-button" type="button" class="dmmBillboard-button dmmBillboard-info">
+                    <span class="material-icons info_outline" aria-hidden="true"></span>
+                    <span class="dmmBillboard-infoText"></span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div class="dmmRows">
+        <div class="verticalSection dmmRow dmmAiRow">
+            <h2 class="sectionTitle sectionTitle-cards padded-left dmmRow-title dmmAiRow-title"></h2>
+            <p class="dmmAiRow-empty padded-left padded-right hide"></p>
+            <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">
+                <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x" data-monitor="markplayed"></div>
+            </div>
+        </div>
+
+        <div class="dmmGenreRows"></div>
     </div>
 </div>

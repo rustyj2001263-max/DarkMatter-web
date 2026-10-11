@@ -1,0 +1,66 @@
+// Dark Matter Media: on mouse-driven desktops the library navigation drawer becomes a
+// fixed icon rail that expands over the page while hovered (or focused by keyboard).
+// Touch devices, TV layout and the admin dashboard keep the stock drawer behaviour.
+
+$dmm-rail-width: 4.6em;
+$dmm-rail-open-width: 17em;
+
+@media (hover: hover) and (pointer: fine) and (min-width: 50em) {
+    @each $dir, $side in (ltr: left, rtl: right) {
+        // `dir` and `libraryDocument` are both set on <body>; `layout-desktop` is on <html>
+        .layout-desktop body.libraryDocument[dir="#{$dir}"]:not(.hideMainDrawer) {
+            .mainDrawer {
+                transform: none !important;
+                #{$side}: 0 !important;
+                width: $dmm-rail-width !important;
+                overflow: hidden;
+                z-index: 1100;
+                box-shadow: none;
+                transition: width 0.22s ease, box-shadow 0.22s ease !important;
+
+                &:hover,
+                &:focus-within {
+                    width: $dmm-rail-open-width !important;
+                    box-shadow: 0 0 2em rgba(0, 0, 0, 0.6);
+                }
+            }
+
+            .mainDrawer-scrollContainer {
+                width: $dmm-rail-open-width;
+                flex-shrink: 0;
+                padding-top: 4.5em;
+                overflow-x: hidden;
+            }
+
+            .navMenuOption {
+                padding-#{$side}: 1.55em !important;
+            }
+
+            .navMenuOptionText,
+            .sidebarHeader {
+                opacity: 0;
+                transition: opacity 0.15s ease;
+            }
+
+            .mainDrawer:hover,
+            .mainDrawer:focus-within {
+                .navMenuOptionText,
+                .sidebarHeader {
+                    opacity: 1;
+                }
+            }
+
+            // The rail is always available, so the hamburger button and the drawer's dimming mask are not needed
+            .mainDrawerButton,
+            .tmla-mask,
+            .mainDrawerHandle {
+                display: none !important;
+            }
+
+            .skinHeader,
+            .mainAnimatedPage {
+                #{$side}: $dmm-rail-width;
+            }
+        }
+    }
+}
