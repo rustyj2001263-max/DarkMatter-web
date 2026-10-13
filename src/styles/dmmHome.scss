@@ -19,7 +19,10 @@
 
 .dmmBillboard-backdrop {
     position: absolute;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     background-position: center 20%;
     background-size: cover;
     background-repeat: no-repeat;
@@ -28,7 +31,14 @@
 
 .dmmBillboard-shade {
     position: absolute;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    // Fallback for browsers without CSS variables (older TVs)
+    background:
+        linear-gradient(to top, #101010 0%, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0) 60%),
+        linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 22%);
     background:
         linear-gradient(to top, var(--jf-palette-background-default, #101010) 0%, rgba(0, 0, 0, 0.55) 30%, rgba(0, 0, 0, 0) 60%),
         linear-gradient(to bottom, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 22%),
@@ -48,7 +58,8 @@
 }
 
 .dmmBillboard-logo {
-    width: min(32em, 80vw);
+    width: 80vw;
+    max-width: 32em;
     height: 9em;
     margin-bottom: 1em;
     background-position: center bottom;
@@ -59,7 +70,7 @@
 
 .dmmBillboard-title {
     margin: 0 0 0.3em;
-    font-size: clamp(2.2em, 5vw, 4.4em);
+    font-size: 3.6em;
     font-weight: 700;
     line-height: 1.05;
     text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
@@ -69,7 +80,6 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.4em 1.2em;
     margin-bottom: 0.9em;
     font-size: 1.05em;
     opacity: 0.92;
@@ -79,7 +89,7 @@
 .dmmBillboard-metaItem {
     display: inline-flex;
     align-items: center;
-    gap: 0.25em;
+    margin: 0.2em 0.6em;
 }
 
 .dmmBillboard-rating {
@@ -91,6 +101,7 @@
 
 .dmmBillboard-star {
     font-size: 1.1em;
+    margin-right: 0.25em;
     color: #f5c518;
 }
 
@@ -110,14 +121,12 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 1em;
 }
 
 .dmmBillboard-button {
     display: inline-flex !important;
     align-items: center;
-    gap: 0.4em;
-    margin: 0 !important;
+    margin: 0.5em !important;
     padding: 0.7em 2.2em 0.7em 1.8em !important;
     border-radius: 0.35em !important;
     font-size: 1.3em !important;
@@ -126,6 +135,7 @@
 
     .material-icons {
         font-size: 1.6em;
+        margin-right: 0.25em;
     }
 
     &:hover,
@@ -203,6 +213,10 @@
 @media all and (max-width: 50em) {
     .dmmBillboard {
         height: 68vh;
+    }
+
+    .dmmBillboard-title {
+        font-size: 2.4em;
     }
 
     .dmmBillboard-overview {
