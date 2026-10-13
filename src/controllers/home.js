@@ -21,6 +21,13 @@ import '../styles/dmmHome.scss';
 const AI_PICKS_PREFS_ID = 'dmmAiSmartPicks';
 const AI_PICKS_PREFS_CLIENT = 'dmm';
 const AI_PICKS_PREFS_KEY = 'aiSmartPicks';
+// Next movie in each collection the user has started, written by the same script (PREFS_KEY_UP_NEXT_MOVIES)
+const UP_NEXT_MOVIES_PREFS_KEY = 'upNextMovies';
+
+// JellyBridge libraries holding titles that are not in the library yet
+const DISCOVER_MOVIES_LIBRARY = 'Discover Movies';
+const DISCOVER_SHOWS_LIBRARY = 'Discover Shows';
+const PLACEHOLDER_PATH_MARKER = '/JellyBridge/';
 
 const MEDIA_TYPES = 'Movie,Series';
 const ROW_LIMIT = 24;
@@ -45,11 +52,30 @@ function getRowCardsHtml(items) {
     });
 }
 
-function fetchAiPicks(apiClient) {
+// Episodes need the series name as well as the episode title
+function getEpisodeRowCardsHtml(items) {
+    return cardBuilder.getCardsHtml({
+        items: items,
+        shape: getBackdropShape(true),
+        preferThumb: true,
+        inheritThumb: false,
+        showTitle: true,
+        showParentTitle: true,
+        centerText: true,
+        overlayPlayButton: true,
+        showDetailsMenu: true,
+        lazy: true,
+        context: 'home',
+        allowBottomPadding: false,
+        lines: 2
+    });
+}
+
+function fetchAiPicks(apiClient, prefsKey = AI_PICKS_PREFS_KEY) {
     const userId = apiClient.getCurrentUserId();
 
     return apiClient.getDisplayPreferences(AI_PICKS_PREFS_ID, userId, AI_PICKS_PREFS_CLIENT).then(prefs => {
-        const ids = (prefs.CustomPrefs?.[AI_PICKS_PREFS_KEY] || '').split(',').filter(Boolean);
+        const ids = (prefs.CustomPrefs?.[prefsKey] || '').split(',').filter(Boolean);
         if (!ids.length) {
             return [];
         }
@@ -68,10 +94,127 @@ function fetchAiPicks(apiClient) {
                 .sort((a, b) => order.get(a.Id) - order.get(b.Id));
         });
     }).catch(err => {
-        console.error('[DarkMatterHome] failed to load AI Smart Picks', err);
+        console.error(`[DarkMatterHome] failed to load ${prefsKey}`, err);
         return [];
     });
 }
+
+function fetchContinueWatching(apiClient) {
+    return apiClient.getResumableItems(apiClient.getCurrentUserId(), {
+        Limit: ROW_LIMIT,
+        Recursive: true,
+        MediaTypes: 'Video',
+        Fields: CARD_FIELDS,
+        ImageTypeLimit: 1,
+        EnableImageTypes: CARD_IMAGE_TYPES,
+        EnableTotalRecordCount: false
+    }).then(result => result.Items);
+}
+
+function fetchNextUpEpisodes(apiClient) {
+    return apiClient.getNextUpEpisodes({
+        UserId: apiClient.getCurrentUserId(),
+        Limit: ROW_LIMIT,
+        Fields: CARD_FIELDS,
+        ImageTypeLimit: 1,
+        EnableImageTypes: CARD_IMAGE_TYPES,
+        EnableTotalRecordCount: false,
+        DisableFirstEpisode: false,
+        // Episodes already in progress are shown in Continue Watching
+        EnableResumable: false
+    }).then(result => result.Items);
+}
+
+function getDateAdded(item) {
+    // Series report when their newest episode arrived; movies only have their own date
+    return item.DateLastMediaAdded || item.DateCreated || '';
+}
+
+function fetchLatestMedia(apiClient) {
+    const userId = apiClient.getCurrentUserId();
+
+    // Query each movie/show library on its own: the server caps a combined "latest" list,
+    // and JellyBridge adds placeholders so often that they would crowd out real additions
+    return apiClient.getUserViews({}, userId).then(result => Promise.all(
+        result.Items
+            .filter(view => view.CollectionType === 'movies' || view.CollectionType === 'tvshows')
+            .map(view => apiClient.getLatestItems({
+                ParentId: view.Id,
+                Limit: ROW_LIMIT,
+                Fields: `${CARD_FIELDS},Path,DateCreated,DateLastMediaAdded`,
+                ImageTypeLimit: 1,
+                EnableImageTypes: CARD_IMAGE_TYPES
+            }))
+    )).then(lists => lists
+        .flat()
+        .filter(item => !item.Path?.includes(PLACEHOLDER_PATH_MARKER))
+        .sort((a, b) => getDateAdded(b).localeCompare(getDateAdded(a)))
+        .slice(0, ROW_LIMIT));
+}
+
+function fetchLibraryItems(apiClient, libraryName) {
+    const userId = apiClient.getCurrentUserId();
+
+    return apiClient.getUserViews({}, userId).then(result => {
+        const library = result.Items.find(view => view.Name === libraryName);
+        if (!library) {
+            return [];
+        }
+
+        return apiClient.getItems(userId, {
+            ParentId: library.Id,
+            Recursive: true,
+            IncludeItemTypes: MEDIA_TYPES,
+            SortBy: 'DateCreated',
+            SortOrder: 'Descending',
+            Limit: ROW_LIMIT,
+            Fields: CARD_FIELDS,
+            ImageTypeLimit: 1,
+            EnableImageTypes: CARD_IMAGE_TYPES,
+            EnableTotalRecordCount: false
+        }).then(itemsResult => itemsResult.Items);
+    });
+}
+
+// Rows shown directly under AI Smart Picks, in this order; empty rows are hidden
+const FEATURE_ROWS = [
+    {
+        title: 'HeaderContinueWatching',
+        fetchData: fetchContinueWatching,
+        getItemsHtml: getEpisodeRowCardsHtml,
+        monitor: 'videoplayback,markplayed'
+    },
+    {
+        title: 'UpNextMovies',
+        fetchData: apiClient => fetchAiPicks(apiClient, UP_NEXT_MOVIES_PREFS_KEY),
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    },
+    {
+        title: 'UpNextTvShows',
+        fetchData: fetchNextUpEpisodes,
+        getItemsHtml: getEpisodeRowCardsHtml,
+        monitor: 'videoplayback,markplayed'
+    },
+    {
+        title: 'LatestMedia',
+        fetchData: fetchLatestMedia,
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    },
+    {
+        title: 'DiscoverMovies',
+        fetchData: apiClient => fetchLibraryItems(apiClient, DISCOVER_MOVIES_LIBRARY),
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    },
+    {
+        title: 'DiscoverTvShows',
+        fetchData: apiClient => fetchLibraryItems(apiClient, DISCOVER_SHOWS_LIBRARY),
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    }
+];
 
 function fetchGenreItems(apiClient, genreId) {
     return apiClient.getItems(apiClient.getCurrentUserId(), {
@@ -131,7 +274,21 @@ export default function (view) {
     const aiRow = view.querySelector('.dmmAiRow');
     const aiItemsContainer = aiRow.querySelector('.itemsContainer');
     const aiEmptyMessage = aiRow.querySelector('.dmmAiRow-empty');
+    const featureRowsContainer = view.querySelector('.dmmFeatureRows');
     const genreRowsContainer = view.querySelector('.dmmGenreRows');
+
+    featureRowsContainer.innerHTML = FEATURE_ROWS.map(row => `
+        <div class="verticalSection dmmRow dmmFeatureRow hide">
+            <h2 class="sectionTitle sectionTitle-cards padded-left dmmRow-title">${escapeHtml(globalize.translate(row.title))}</h2>
+            <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">
+                <div is="emby-itemscontainer" class="itemsContainer scrollSlider focuscontainer-x" data-monitor="${row.monitor}"></div>
+            </div>
+        </div>`).join('');
+    const featureItemsContainers = Array.from(featureRowsContainer.querySelectorAll('.itemsContainer'));
+    featureItemsContainers.forEach((itemsContainer, index) => {
+        itemsContainer.getItemsHtml = FEATURE_ROWS[index].getItemsHtml;
+        itemsContainer.parentContainer = itemsContainer.closest('.dmmFeatureRow');
+    });
 
     let billboardItem = null;
     let genreObserver = null;
@@ -262,6 +419,12 @@ export default function (view) {
         // The AI picks are refreshed on every visit so new script output shows up straight away
         const aiPromise = aiItemsContainer.resume({ refresh: true });
 
+        // Watch progress changes between visits, so these rows are refreshed every time too
+        const featurePromises = featureItemsContainers.map((itemsContainer, index) => {
+            itemsContainer.fetchData = () => FEATURE_ROWS[index].fetchData(apiClient);
+            return itemsContainer.resume({ refresh: true });
+        });
+
         if (isRendered) {
             for (const itemsContainer of genreRowsContainer.querySelectorAll('.itemsContainer')) {
                 itemsContainer.resume();
@@ -270,7 +433,7 @@ export default function (view) {
         }
 
         isRendered = true;
-        Promise.all([renderBillboard(apiClient), renderGenreRows(apiClient), aiPromise])
+        Promise.all([renderBillboard(apiClient), renderGenreRows(apiClient), aiPromise, ...featurePromises])
             .then(() => {
                 imageLoader.lazyChildren(view);
                 if (layoutManager.tv) {
@@ -293,6 +456,11 @@ export default function (view) {
 
     view.addEventListener('viewdestroy', () => {
         destroyGenreRows();
+        for (const itemsContainer of featureItemsContainers) {
+            itemsContainer.fetchData = null;
+            itemsContainer.getItemsHtml = null;
+            itemsContainer.parentContainer = null;
+        }
         aiItemsContainer.fetchData = null;
         aiItemsContainer.getItemsHtml = null;
         aiItemsContainer.afterRefresh = null;
