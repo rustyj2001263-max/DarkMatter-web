@@ -154,6 +154,7 @@
     display: flex;
     align-items: center;
     flex-grow: 1;
+    min-height: 48px;
     overflow: hidden;
     justify-content: flex-start;
 }
@@ -203,6 +204,8 @@
     background-size: contain;
     background-repeat: no-repeat;
     width: 13.2em;
+    // Dark Matter Media: square logo needs more height than the stock wide banner
+    height: 48px;
 
     [dir='rtl'] & {
         background-position: right center;
