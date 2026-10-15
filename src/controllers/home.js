@@ -130,16 +130,19 @@ function getDateAdded(item) {
     return item.DateLastMediaAdded || item.DateCreated || '';
 }
 
-function fetchLatestMedia(apiClient) {
+// Newly added items from every library of one type ('movies' or 'tvshows')
+function fetchRecentMedia(apiClient, collectionType) {
     const userId = apiClient.getCurrentUserId();
 
-    // Query each movie/show library on its own: the server caps a combined "latest" list,
+    // Query each library on its own: the server caps a combined "latest" list,
     // and JellyBridge adds placeholders so often that they would crowd out real additions
     return apiClient.getUserViews({}, userId).then(result => Promise.all(
         result.Items
-            .filter(view => view.CollectionType === 'movies' || view.CollectionType === 'tvshows')
+            .filter(view => view.CollectionType === collectionType)
             .map(view => apiClient.getLatestItems({
                 ParentId: view.Id,
+                // New episodes are grouped into their series by the server
+                IncludeItemTypes: collectionType === 'movies' ? 'Movie' : 'Episode',
                 Limit: ROW_LIMIT,
                 Fields: `${CARD_FIELDS},Path,DateCreated,DateLastMediaAdded`,
                 ImageTypeLimit: 1,
@@ -197,8 +200,14 @@ const FEATURE_ROWS = [
         monitor: 'videoplayback,markplayed'
     },
     {
-        title: 'LatestMedia',
-        fetchData: fetchLatestMedia,
+        title: 'RecentMovies',
+        fetchData: apiClient => fetchRecentMedia(apiClient, 'movies'),
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    },
+    {
+        title: 'RecentTvShows',
+        fetchData: apiClient => fetchRecentMedia(apiClient, 'tvshows'),
         getItemsHtml: getRowCardsHtml,
         monitor: 'markplayed'
     },
