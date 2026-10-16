@@ -246,11 +246,12 @@ function fetchBillboardItem(apiClient) {
         SortBy: 'Random',
         Filters: 'IsUnplayed',
         ImageTypes: 'Backdrop',
-        Limit: 1,
-        Fields: 'Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount',
+        // A few spares so the billboard never features a JellyBridge placeholder
+        Limit: 10,
+        Fields: 'Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,Path',
         EnableImageTypes: 'Backdrop,Logo',
         EnableTotalRecordCount: false
-    }).then(result => result.Items[0]);
+    }).then(result => result.Items.find(item => !item.Path?.includes(PLACEHOLDER_PATH_MARKER)));
 }
 
 function getBillboardMeta(item) {
