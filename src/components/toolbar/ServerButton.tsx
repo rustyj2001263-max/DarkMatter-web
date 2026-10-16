@@ -21,9 +21,10 @@ const ServerButton: FC = () => {
                     src={icon}
                     alt=''
                     aria-hidden
+                    // Dark Matter Media: the square logo needs more room than the stock icon
                     style={{
-                        maxHeight: '1.25em',
-                        maxWidth: '1.25em'
+                        maxHeight: '48px',
+                        maxWidth: '48px'
                     }}
                 />
             }
