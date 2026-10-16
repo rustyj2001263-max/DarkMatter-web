@@ -111,18 +111,34 @@ function fetchContinueWatching(apiClient) {
     }).then(result => result.Items);
 }
 
-function fetchNextUpEpisodes(apiClient) {
-    return apiClient.getNextUpEpisodes({
-        UserId: apiClient.getCurrentUserId(),
-        Limit: ROW_LIMIT,
-        Fields: CARD_FIELDS,
-        ImageTypeLimit: 1,
-        EnableImageTypes: CARD_IMAGE_TYPES,
-        EnableTotalRecordCount: false,
-        DisableFirstEpisode: false,
-        // Episodes already in progress are shown in Continue Watching
-        EnableResumable: false
-    }).then(result => result.Items);
+// Anime has its own libraries; any library with "anime" in its name gets the anime rows instead
+function isAnimeLibrary(view) {
+    return /anime/i.test(view.Name || '');
+}
+
+function fetchNextUpEpisodes(apiClient, anime) {
+    const userId = apiClient.getCurrentUserId();
+
+    // Asked per TV library so anime and regular shows each get their own row
+    return apiClient.getUserViews({}, userId).then(result => Promise.all(
+        result.Items
+            .filter(view => view.CollectionType === 'tvshows' && isAnimeLibrary(view) === anime)
+            .map(view => apiClient.getNextUpEpisodes({
+                UserId: userId,
+                ParentId: view.Id,
+                Limit: ROW_LIMIT,
+                Fields: `${CARD_FIELDS},Path`,
+                ImageTypeLimit: 1,
+                EnableImageTypes: CARD_IMAGE_TYPES,
+                EnableTotalRecordCount: false,
+                DisableFirstEpisode: false,
+                // Episodes already in progress are shown in Continue Watching
+                EnableResumable: false
+            }).then(nextUp => nextUp.Items))
+    )).then(lists => lists
+        .flat()
+        .filter(item => !item.Path?.includes(PLACEHOLDER_PATH_MARKER))
+        .slice(0, ROW_LIMIT));
 }
 
 function getDateAdded(item) {
@@ -130,19 +146,19 @@ function getDateAdded(item) {
     return item.DateLastMediaAdded || item.DateCreated || '';
 }
 
-// Newly added items from every library of one type ('movies' or 'tvshows')
-function fetchRecentMedia(apiClient, collectionType) {
+// Newly added items from every anime or non-anime library of the given types ('movies', 'tvshows')
+function fetchRecentMedia(apiClient, collectionTypes, anime) {
     const userId = apiClient.getCurrentUserId();
 
     // Query each library on its own: the server caps a combined "latest" list,
     // and JellyBridge adds placeholders so often that they would crowd out real additions
     return apiClient.getUserViews({}, userId).then(result => Promise.all(
         result.Items
-            .filter(view => view.CollectionType === collectionType)
+            .filter(view => collectionTypes.includes(view.CollectionType) && isAnimeLibrary(view) === anime)
             .map(view => apiClient.getLatestItems({
                 ParentId: view.Id,
                 // New episodes are grouped into their series by the server
-                IncludeItemTypes: collectionType === 'movies' ? 'Movie' : 'Episode',
+                IncludeItemTypes: view.CollectionType === 'movies' ? 'Movie' : 'Episode',
                 Limit: ROW_LIMIT,
                 Fields: `${CARD_FIELDS},Path,DateCreated,DateLastMediaAdded`,
                 ImageTypeLimit: 1,
@@ -195,19 +211,31 @@ const FEATURE_ROWS = [
     },
     {
         title: 'UpNextTvShows',
-        fetchData: fetchNextUpEpisodes,
+        fetchData: apiClient => fetchNextUpEpisodes(apiClient, false),
+        getItemsHtml: getEpisodeRowCardsHtml,
+        monitor: 'videoplayback,markplayed'
+    },
+    {
+        title: 'UpNextAnime',
+        fetchData: apiClient => fetchNextUpEpisodes(apiClient, true),
         getItemsHtml: getEpisodeRowCardsHtml,
         monitor: 'videoplayback,markplayed'
     },
     {
         title: 'RecentMovies',
-        fetchData: apiClient => fetchRecentMedia(apiClient, 'movies'),
+        fetchData: apiClient => fetchRecentMedia(apiClient, ['movies'], false),
         getItemsHtml: getRowCardsHtml,
         monitor: 'markplayed'
     },
     {
         title: 'RecentTvShows',
-        fetchData: apiClient => fetchRecentMedia(apiClient, 'tvshows'),
+        fetchData: apiClient => fetchRecentMedia(apiClient, ['tvshows'], false),
+        getItemsHtml: getRowCardsHtml,
+        monitor: 'markplayed'
+    },
+    {
+        title: 'RecentAnime',
+        fetchData: apiClient => fetchRecentMedia(apiClient, ['movies', 'tvshows'], true),
         getItemsHtml: getRowCardsHtml,
         monitor: 'markplayed'
     },
