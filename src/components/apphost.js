@@ -183,7 +183,9 @@ function supportsFullscreen() {
 }
 
 function getDefaultLayout() {
-    return LayoutMode.Modern;
+    // Dark Matter Media: default to the legacy layouts, which have the classic header,
+    // the hover sidebar and the sign-in splash screen; users can still pick Modern
+    return browser.mobile ? LayoutMode.MobileLegacy : LayoutMode.DesktopLegacy;
 }
 
 function supportsHtmlMediaAutoplay() {
