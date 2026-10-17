@@ -1,14 +1,16 @@
 // Dark Matter Media: on mouse-driven desktops the library navigation drawer becomes a
 // fixed icon rail that expands over the page while hovered (or focused by keyboard).
-// Touch devices, TV layout and the admin dashboard keep the stock drawer behaviour.
+// Touch devices, TV layout and the admin dashboard keep the stock drawer behaviour, and so does
+// the video player, which counts as a library page but must stay full screen.
 
 $dmm-rail-width: 4.6em;
 $dmm-rail-open-width: 17em;
 
 @media (hover: hover) and (pointer: fine) and (min-width: 50em) {
     @each $dir, $side in (ltr: left, rtl: right) {
-        // `dir` and `libraryDocument` are both set on <body>; `layout-desktop` is on <html>
-        .layout-desktop body.libraryDocument[dir="#{$dir}"]:not(.hideMainDrawer) {
+        // `dir` and `libraryDocument` are both set on <body>; `layout-desktop` is on <html>;
+        // the video player marks the header with `osdHeader` for as long as it is open
+        .layout-desktop body.libraryDocument[dir="#{$dir}"]:not(.hideMainDrawer):not(:has(.skinHeader.osdHeader)) {
             .mainDrawer {
                 transform: none !important;
                 #{$side}: 0 !important;
