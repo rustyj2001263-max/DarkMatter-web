@@ -268,8 +268,12 @@ function fetchGenreItems(apiClient, genreId) {
 }
 
 function fetchBillboardItem(apiClient) {
-    return apiClient.getItems(apiClient.getCurrentUserId(), {
-        IncludeItemTypes: MEDIA_TYPES,
+    const userId = apiClient.getCurrentUserId();
+
+    // Movies and series are asked for separately: Jellyfin 12 answers single-type random queries
+    // in a fraction of the time it takes for a combined Movie,Series one
+    const fetchCandidates = type => apiClient.getItems(userId, {
+        IncludeItemTypes: type,
         Recursive: true,
         SortBy: 'Random',
         Filters: 'IsUnplayed',
@@ -279,7 +283,12 @@ function fetchBillboardItem(apiClient) {
         Fields: 'Overview,Genres,OfficialRating,CommunityRating,ProductionYear,RunTimeTicks,ChildCount,Path',
         EnableImageTypes: 'Backdrop,Logo',
         EnableTotalRecordCount: false
-    }).then(result => result.Items.find(item => !item.Path?.includes(PLACEHOLDER_PATH_MARKER)));
+    }).then(result => result.Items);
+
+    return Promise.all(MEDIA_TYPES.split(',').map(fetchCandidates)).then(lists => {
+        const candidates = lists.flat().filter(item => !item.Path?.includes(PLACEHOLDER_PATH_MARKER));
+        return candidates[Math.floor(Math.random() * candidates.length)];
+    });
 }
 
 function getBillboardMeta(item) {
